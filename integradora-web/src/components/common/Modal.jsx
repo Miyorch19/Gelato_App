@@ -25,15 +25,15 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn"
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 animate-fadeIn"
       onClick={onClose}
     >
       {/* Backdrop con blur */}
       <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" />
-      
+
       {/* Modal Container */}
-      <div 
+      <div
         className={`relative bg-white rounded-2xl ${sizeClasses[size]} w-full shadow-xl transform animate-slideUp`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -47,10 +47,10 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
             className="text-gray-400 hover:text-gray-600 transition-all duration-200 -mr-2 -mt-2 p-2 rounded-lg hover:bg-gray-100 group"
             aria-label="Cerrar"
           >
-            <svg 
-              className="w-5 h-5 group-hover:scale-110 transition-transform" 
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className="w-5 h-5 group-hover:scale-110 transition-transform"
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -71,7 +71,7 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
         )}
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }

@@ -70,6 +70,13 @@ class DeliveryAssignmentService
                 'active_orders_count' => $deliveryPerson->deliveries_count
             ]);
 
+            // Emitir evento de asignación
+            try {
+                \App\Events\OrderAssigned::dispatch($order);
+            } catch (\Exception $e) {
+                Log::error('Error broadcasting OrderAssigned event: ' . $e->getMessage());
+            }
+
             return $deliveryPerson;
 
         } catch (\Exception $e) {
@@ -144,6 +151,13 @@ class DeliveryAssignmentService
                 'new_delivery_person_id' => $newDeliveryPerson->id,
                 'new_delivery_person_name' => $newDeliveryPerson->name
             ]);
+
+            // Emitir evento de asignación
+            try {
+                \App\Events\OrderAssigned::dispatch($order);
+            } catch (\Exception $e) {
+                Log::error('Error broadcasting OrderAssigned event: ' . $e->getMessage());
+            }
 
             return $newDeliveryPerson;
 

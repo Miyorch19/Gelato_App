@@ -17,3 +17,7 @@ Broadcast::channel('order.{orderId}', function (User $user, int $orderId) {
 
     return $user->id === $order->user_id || $user->id === $order->delivery_person_id;
 });
+
+Broadcast::channel('delivery-person.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});

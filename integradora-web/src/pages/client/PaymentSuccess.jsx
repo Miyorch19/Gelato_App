@@ -46,6 +46,12 @@ const PaymentSuccess = () => {
       const total = localStorage.getItem('checkout_total');
       const pointsToRedeem = parseInt(localStorage.getItem('checkout_points_to_redeem')) || 0;
 
+      // ✅ DEBUG: Ver qué valor se está leyendo
+      console.log('🔍 PaymentSuccess - Points from localStorage:', {
+        raw: localStorage.getItem('checkout_points_to_redeem'),
+        parsed: pointsToRedeem
+      });
+
       if (!addressId) {
         throw new Error('No se encontró la dirección de entrega');
       }
@@ -53,20 +59,32 @@ const PaymentSuccess = () => {
       setStep(1);
 
       let captureResponse;
-      try {
-        captureResponse = await paymentService.capturePayPalOrder(paypalToken);
-        if (!captureResponse.success) {
-          throw new Error(captureResponse.message || 'Error al verificar el pago');
+
+      // ✅ CASO ESPECIAL: Orden gratuita (cubierta por puntos)
+      if (paypalToken === 'FREE_ORDER') {
+        captureResponse = {
+          success: true,
+          transaction_id: 'FREE_' + Date.now(),
+          status: 'COMPLETED'
+        };
+        // Simular pequeño delay para UX
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        try {
+          captureResponse = await paymentService.capturePayPalOrder(paypalToken);
+          if (!captureResponse.success) {
+            throw new Error(captureResponse.message || 'Error al verificar el pago');
+          }
+        } catch (captureError) {
+          setDebugInfo({
+            step: 'capture',
+            token: paypalToken,
+            error: captureError.response?.data || captureError.message
+          });
+          throw new Error(
+            `Error al verificar el pago: ${captureError.response?.data?.message || captureError.message}`
+          );
         }
-      } catch (captureError) {
-        setDebugInfo({
-          step: 'capture',
-          token: paypalToken,
-          error: captureError.response?.data || captureError.message
-        });
-        throw new Error(
-          `Error al verificar el pago: ${captureError.response?.data?.message || captureError.message}`
-        );
       }
 
       setStep(2);
@@ -75,7 +93,7 @@ const PaymentSuccess = () => {
         paypal_order_id: paypalOrderId,
         paypal_transaction_id: captureResponse.transaction_id,
         payer_id: payerId,
-        points_to_redeem: pointsToRedeem
+        points_to_redeem: pointsToRedeem // ✅ Revertido a 'points_to_redeem' para CartController
       };
 
       let orderResponse;

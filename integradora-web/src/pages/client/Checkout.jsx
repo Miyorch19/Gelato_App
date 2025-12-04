@@ -128,8 +128,10 @@ const Checkout = () => {
     const cartSubtotal = parseFloat(total) || 0;
     const totalWithShipping = cartSubtotal + SHIPPING_COST;
 
-    if (points > totalWithShipping) {
-      setError('Los puntos no pueden exceder el total incluyendo envío');
+    // Permitir usar puntos hasta cubrir el total (redondear hacia arriba)
+    const maxAllowedPoints = Math.ceil(totalWithShipping);
+    if (points > maxAllowedPoints) {
+      setError(`Los puntos no pueden exceder ${maxAllowedPoints} (total redondeado hacia arriba)`);
       setTimeout(() => setError(''), 3000);
       return;
     }
@@ -146,7 +148,8 @@ const Checkout = () => {
   const handleUseAllPoints = () => {
     const cartSubtotal = parseFloat(total) || 0;
     const totalWithShipping = cartSubtotal + SHIPPING_COST;
-    const maxPoints = Math.min(availablePoints, totalWithShipping);
+    // Redondear hacia arriba para cubrir el total completo
+    const maxPoints = Math.min(availablePoints, Math.ceil(totalWithShipping));
 
     setInputPoints(maxPoints.toString());
     setPointsToRedeem(maxPoints);
@@ -164,7 +167,7 @@ const Checkout = () => {
     const totalWithShipping = cartSubtotal + SHIPPING_COST;
     const grandTotal = totalWithShipping - pointsDiscount;
 
-    if (cartItems.length === 0 || grandTotal <= 0) {
+    if (cartItems.length === 0) {
       setError('Tu carrito está vacío o el total es inválido');
       setTimeout(() => navigate('/shop'), 2000);
       return;
@@ -174,6 +177,21 @@ const Checkout = () => {
     setError('');
 
     try {
+      // ✅ CASO ESPECIAL: Total es 0 o negativo (cubierto completamente por puntos)
+      if (grandTotal <= 0) {
+        localStorage.setItem('checkout_address_id', selectedAddress.id.toString());
+        localStorage.setItem('checkout_paypal_order_id', 'FREE_ORDER_' + Date.now());
+        localStorage.setItem('checkout_subtotal', cartSubtotal.toString());
+        localStorage.setItem('checkout_shipping', SHIPPING_COST.toString());
+        localStorage.setItem('checkout_points_to_redeem', pointsToRedeem.toString());
+        localStorage.setItem('checkout_points_discount', pointsDiscount.toString());
+        localStorage.setItem('checkout_total', '0');
+
+        // Redirigir directamente a success con un token simulado
+        window.location.href = `/payment/success?token=FREE_ORDER&PayerID=USER_${Date.now()}`;
+        return;
+      }
+
       const paypalOrder = await paymentService.createPayPalOrder({
         total: grandTotal,
         description: `Pedido de ${cartItems.length} producto(s) - Envío incluido`

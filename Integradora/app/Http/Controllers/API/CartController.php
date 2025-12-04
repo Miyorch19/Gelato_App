@@ -733,42 +733,25 @@ class CartController extends Controller
 
             // ✅ CANJEAR PUNTOS SI APLICA
             if ($pointsToRedeem > 0) {
-                try {
-                    $this->pointsService->redeemPointsForOrder($user, $pointsToRedeem, $order);
-                    
-                    Log::info('✅ Puntos canjeados exitosamente', [
-                        'user_id' => $user->id,
-                        'points_redeemed' => $pointsToRedeem,
-                        'order_id' => $order->id
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('❌ Error al canjear puntos', [
-                        'error' => $e->getMessage(),
-                        'user_id' => $user->id,
-                        'points' => $pointsToRedeem
-                    ]);
-                }
-            }
-
-            // ✅ OTORGAR PUNTOS POR LA COMPRA
-            try {
-                $this->pointsService->processOrderPoints($order);
+                // ❌ REMOVIDO try-catch para que si falla, haga rollback de la transacción
+                $this->pointsService->redeemPointsForOrder($user, $pointsToRedeem, $order);
                 
-                $pointsEarned = $user->calculatePointsForPurchase($finalTotal);
-                
-                Log::info('✅ Puntos otorgados por compra', [
+                Log::info('✅ Puntos canjeados exitosamente', [
                     'user_id' => $user->id,
-                    'points_earned' => $pointsEarned,
-                    'order_id' => $order->id,
-                    'order_total' => $finalTotal
-                ]);
-            } catch (\Exception $e) {
-                Log::error('❌ Error al otorgar puntos', [
-                    'error' => $e->getMessage(),
-                    'user_id' => $user->id,
+                    'points_redeemed' => $pointsToRedeem,
                     'order_id' => $order->id
                 ]);
             }
+
+            // ❌ REMOVIDO: NO otorgar puntos en el checkout
+            // Los puntos se otorgan ÚNICAMENTE cuando el pedido se marca como "Entregado" (ID 4)
+            // Ver OrderController::updateStatus() línea 292
+            // 
+            // ANTES (INCORRECTO):
+            // $this->pointsService->processOrderPoints($order);
+            //
+            // AHORA: Los puntos se otorgan en OrderController::updateStatus() cuando delivery_status_id == 4
+
 
             // ✅ Registrar historial de estado
             $statusNote = 'Pedido creado - Pago con PayPal completado';

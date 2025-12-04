@@ -179,6 +179,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ===================================================================
     Route::apiResource('orders', OrderController::class);
     Route::post('/orders/{order}/update-status', [OrderController::class, 'updateStatus']);
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']); // ✅ RUTA NUEVA
     Route::get('/orders/{order}/tracking', [OrderController::class, 'tracking']);
     
     // Rutas solo para admin - RESTRICTED TO SUPERADMIN
@@ -314,3 +315,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{review}', [ProductReviewController::class, 'destroy']);
     });
 });
+
+// ===================================================================
+// BROADCASTING
+// ===================================================================
+use Illuminate\Support\Facades\Broadcast;
+
+Broadcast::routes(['middleware' => ['auth:sanctum']]);

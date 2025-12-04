@@ -21,6 +21,7 @@ class StoreOrderRequest extends FormRequest
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:base_products,id', // ⚠️ Cambié products a base_products
             'items.*.quantity' => 'required|integer|min:1',
+            'points_used' => 'nullable|integer|min:0', // ✅ AGREGADO: Validación de puntos
         ];
     }
 

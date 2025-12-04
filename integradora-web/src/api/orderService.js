@@ -49,4 +49,10 @@ export const orderService = {
     const response = await api.delete(`/orders/${id}`);
     return response.data;
   },
+
+  // Cancelar pedido (Usuario)
+  cancel: async (id) => {
+    const response = await api.post(`/orders/${id}/cancel`);
+    return response.data;
+  },
 };

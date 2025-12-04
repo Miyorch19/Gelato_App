@@ -340,12 +340,13 @@ class User extends Authenticatable implements CanResetPassword
 
     /**
      * Canjear puntos (SIN LÍMITE)
-     * Solo verifica que tenga suficientes puntos disponibles
+     * ✅ CORREGIDO: Usa columna 'points' directa para coincidir con validación en OrderController
      */
     public function redeemPoints(int $points, string $description, ?int $orderId = null): PointTransaction
     {
-        if ($this->available_points < $points) {
-            throw new \Exception('Puntos insuficientes. Disponibles: ' . $this->available_points);
+        // ✅ CORRECCIÓN: Validar contra columna 'points' en lugar de 'available_points'
+        if ($this->points < $points) {
+            throw new \Exception('Puntos insuficientes. Disponibles: ' . $this->points);
         }
         
         $transaction = $this->pointTransactions()->create([
@@ -360,7 +361,32 @@ class User extends Authenticatable implements CanResetPassword
         Log::info('✅ Puntos canjeados', [
             'user_id' => $this->id,
             'points_redeemed' => $points,
-            'remaining_points' => $this->available_points,
+            'remaining_points' => $this->points, // ✅ Cambiar a points
+            'order_id' => $orderId
+        ]);
+        
+        return $transaction;
+    }
+
+    /**
+     * Reembolsar puntos (por cancelación de orden)
+     */
+    public function refundPoints(int $points, string $description, ?int $orderId = null): PointTransaction
+    {
+        $transaction = $this->pointTransactions()->create([
+            'type' => 'refunded',
+            'points' => $points,
+            'description' => $description,
+            'order_id' => $orderId,
+            'expires_at' => now()->addYear()
+        ]);
+        
+        $this->increment('points', $points);
+        
+        Log::info('💰 Puntos reembolsados', [
+            'user_id' => $this->id,
+            'points_refunded' => $points,
+            'new_balance' => $this->points,
             'order_id' => $orderId
         ]);
         

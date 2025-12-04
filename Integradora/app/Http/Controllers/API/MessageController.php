@@ -43,7 +43,7 @@ class MessageController extends Controller
         // Cargar la relación sender para el evento
         $message->load('sender');
 
-        broadcast(new MessageSent($message))->toOthers();
+        broadcast(new MessageSent($message));
 
         return response()->json($message, 201);
     }

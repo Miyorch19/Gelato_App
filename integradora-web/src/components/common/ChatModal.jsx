@@ -49,6 +49,7 @@ const ChatModal = ({ order, onClose }) => {
                 wssPort: process.env.REACT_APP_REVERB_PORT || 8080,
                 forceTLS: (process.env.REACT_APP_REVERB_SCHEME || 'http') === 'https',
                 enabledTransports: ['ws', 'wss'],
+                authEndpoint: `${process.env.REACT_APP_API_URL}/broadcasting/auth`,
                 auth: {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -60,7 +61,10 @@ const ChatModal = ({ order, onClose }) => {
                 .private(`order.${order.id}`)
                 .listen('MessageSent', (e) => {
                     console.log('New message received:', e.message);
-                    setMessages((prev) => [...prev, e.message]);
+                    setMessages((prev) => {
+                        if (prev.some(m => m.id === e.message.id)) return prev;
+                        return [...prev, e.message];
+                    });
                 });
         } catch (error) {
             console.error('Error setting up Echo:', error);
@@ -85,8 +89,7 @@ const ChatModal = ({ order, onClose }) => {
 
         try {
             setSending(true);
-            const message = await messageService.sendMessage(order.id, newMessage.trim());
-            setMessages((prev) => [...prev, message]);
+            await messageService.sendMessage(order.id, newMessage.trim());
             setNewMessage('');
         } catch (error) {
             console.error('Error sending message:', error);

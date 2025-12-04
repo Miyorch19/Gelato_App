@@ -84,15 +84,17 @@ class PointsService
         }
         
         // Verificar que el usuario tenga suficientes puntos
-        if ($user->available_points < $pointsToRedeem) {
+        // ✅ CORREGIDO: Usar columna 'points' directa para coincidir con User::redeemPoints
+        if ($user->points < $pointsToRedeem) {
             throw new \Exception(
-                "Puntos insuficientes. Disponibles: {$user->available_points}, Solicitados: {$pointsToRedeem}"
+                "Puntos insuficientes. Disponibles: {$user->points}, Solicitados: {$pointsToRedeem}"
             );
         }
         
         // ✅ CRÍTICO: Verificar que los puntos no excedan el total de la orden
+        // EXCEPCIÓN: Si el total es 0 (orden gratuita cubierta por puntos), permitir el canje
         // Este total YA incluye productos + envío
-        if ($pointsToRedeem > $order->total) {
+        if ($order->total > 0 && $pointsToRedeem > $order->total) {
             throw new \Exception(
                 "Los puntos a canjear ({$pointsToRedeem}) no pueden exceder el total de la orden ({$order->total})"
             );
@@ -112,7 +114,7 @@ class PointsService
                 'order_id' => $order->id,
                 'points_redeemed' => $pointsToRedeem,
                 'discount_applied' => $pointsToRedeem,
-                'remaining_points' => $user->available_points,
+                'remaining_points' => $user->points, // ✅ Usar columna points
                 'note' => 'Descuento aplicado sobre total incluyendo envío'
             ]);
             
@@ -124,6 +126,66 @@ class PointsService
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'points_requested' => $pointsToRedeem
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Reembolsar puntos por cancelación de orden
+     */
+    public function refundPointsForOrder(Order $order): void
+    {
+        // Buscar la transacción de canje para esta orden
+        $redemptionTransaction = PointTransaction::where('order_id', $order->id)
+            ->where('type', 'redeemed')
+            ->first();
+        
+        if (!$redemptionTransaction) {
+            Log::info('ℹ️ No hay puntos para reembolsar', [
+                'order_id' => $order->id,
+                'reason' => 'No se encontró transacción de canje'
+            ]);
+            return; // No se canjearon puntos en esta orden
+        }
+        
+        $pointsToRefund = abs($redemptionTransaction->points);
+        
+        if ($pointsToRefund <= 0) {
+            Log::info('ℹ️ No hay puntos para reembolsar', [
+                'order_id' => $order->id,
+                'reason' => 'Cantidad de puntos es 0'
+            ]);
+            return;
+        }
+        
+        $user = $order->user;
+        
+        DB::beginTransaction();
+        
+        try {
+            // Reembolsar puntos al usuario
+            $user->refundPoints(
+                $pointsToRefund,
+                "Reembolso por cancelación de orden #{$order->id}",
+                $order->id
+            );
+            
+            Log::info('✅ Puntos reembolsados exitosamente', [
+                'user_id' => $user->id,
+                'order_id' => $order->id,
+                'points_refunded' => $pointsToRefund,
+                'new_balance' => $user->fresh()->points
+            ]);
+            
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ Error al reembolsar puntos', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'order_id' => $order->id,
+                'points_to_refund' => $pointsToRefund
             ]);
             throw $e;
         }

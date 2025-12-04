@@ -12,6 +12,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Http\Requests\UpdateOrderStatusRequest;
 use App\Http\Requests\AssignDeliveryRequest;
 use App\Services\DeliveryAssignmentService;
+use App\Services\PointsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -19,10 +20,12 @@ use Illuminate\Support\Facades\Log;
 class OrderController extends Controller
 {
     protected $deliveryService;
+    protected $pointsService;
 
-    public function __construct(DeliveryAssignmentService $deliveryService)
+    public function __construct(DeliveryAssignmentService $deliveryService, \App\Services\PointsService $pointsService)
     {
         $this->deliveryService = $deliveryService;
+        $this->pointsService = $pointsService;
     }
 
     public function deliveryWorkload()
@@ -146,6 +149,39 @@ class OrderController extends Controller
             // Actualizar total
             $order->update(['total' => $total]);
 
+            // ✅ LÓGICA DE PUNTOS (Deducción)
+            if ($request->has('points_used') && $request->points_used > 0) {
+                $user = \App\Models\User::find($request->user_id);
+                
+                // ✅ CORRECCIÓN: Usar columna 'points' directa para coincidir con lo que ve el usuario
+                // El accessor 'available_points' calcula desde transacciones y puede estar desincronizado
+                if ($user->points >= $request->points_used) {
+                    // 1. Canjear puntos
+                    $user->redeemPoints($request->points_used, 'Canje en pedido #' . $order->id, $order->id);
+                    
+                    // 2. Calcular descuento (Asumiendo 1 punto = $1 peso, ajustar según regla de negocio)
+                    // Si no hay regla explícita, usaremos 1 punto = $1 peso como estándar
+                    $discount = $request->points_used;
+                    
+                    // 3. Aplicar descuento al total
+                    $newTotal = max(0, $total - $discount);
+                    $order->update(['total' => $newTotal]);
+                    
+                    Log::info('✅ Puntos canjeados en orden', [
+                        'order_id' => $order->id,
+                        'points' => $request->points_used,
+                        'original_total' => $total,
+                        'new_total' => $newTotal
+                    ]);
+                } else {
+                    Log::warning('⚠️ Usuario intentó usar más puntos de los disponibles', [
+                        'user_id' => $user->id,
+                        'available' => $user->points, // ✅ Cambiar a points
+                        'requested' => $request->points_used
+                    ]);
+                }
+            }
+
             // Registrar en historial
             $order->statusHistory()->create([
                 'delivery_status_id' => $pendienteStatus->id,
@@ -256,6 +292,44 @@ class OrderController extends Controller
             $request->notes
         );
 
+        // ✅ LÓGICA DE PUNTOS (Otorgar puntos al entregar)
+        // ID 4 = Entregado
+        if ($request->delivery_status_id == 4) {
+            $user = $order->user;
+            
+            // Verificar si ya se otorgaron puntos para esta orden
+            $existingTransaction = $user->pointTransactions()
+                ->where('order_id', $order->id)
+                ->where('type', 'earned')
+                ->first();
+                
+            if (!$existingTransaction) {
+                $pointsToEarn = $user->calculatePointsForPurchase($order->total);
+                
+                if ($pointsToEarn > 0) {
+                    $user->addPoints($pointsToEarn, 'Compra pedido #' . $order->id, $order->id);
+                    Log::info('🎁 Puntos otorgados por entrega', [
+                        'order_id' => $order->id,
+                        'user_id' => $user->id,
+                        'points' => $pointsToEarn
+                    ]);
+                }
+            }
+        }
+
+        // ✅ NUEVO: Reembolsar puntos al cancelar
+        // ID 5 = Cancelado
+        if ($request->delivery_status_id == 5) {
+            try {
+                $this->pointsService->refundPointsForOrder($order);
+            } catch (\Exception $e) {
+                Log::error('Error al reembolsar puntos en actualización de estado de orden #' . $order->id . ': ' . $e->getMessage());
+            }
+
+            // ✅ RESTAURAR STOCK
+            $this->restoreStock($order);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Estado del pedido actualizado exitosamente',
@@ -277,6 +351,13 @@ class OrderController extends Controller
         
         if ($enCaminoStatus) {
             $order->changeStatus($enCaminoStatus->id, $request->user()->id, 'Repartidor asignado');
+        }
+
+        // Emitir evento de asignación
+        try {
+            \App\Events\OrderAssigned::dispatch($order);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error broadcasting OrderAssigned event: ' . $e->getMessage());
         }
 
         return response()->json([
@@ -439,6 +520,131 @@ class OrderController extends Controller
                 'message' => 'Error al descargar el ticket',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Cancel order by user with penalty logic.
+     */
+    public function cancel(Request $request, Order $order)
+    {
+        try {
+            // Verificar que el usuario sea el dueño de la orden
+            if ($request->user()->id !== $order->user_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes permiso para cancelar esta orden'
+                ], 403);
+            }
+
+            // Verificar estado actual
+            // 1: Pendiente, 2: Preparando, 3: En camino
+            // 4: Entregado, 5: Cancelado
+            
+            Log::info('Intento de cancelación', [
+                'order_id' => $order->id,
+                'status_id' => $order->delivery_status_id,
+                'status_name' => $order->deliveryStatus->name ?? 'Unknown'
+            ]);
+            
+            if (in_array($order->delivery_status_id, [4, 5])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se puede cancelar una orden entregada o ya cancelada'
+                ], 400);
+            }
+
+            $penaltyPercentage = 0;
+            $statusName = $order->deliveryStatus->name;
+
+            // Lógica de penalización
+            // 1: Pendiente (sin penalización)
+            // 2: Preparando (25% penalización)
+            // 3: En camino (50% penalización)
+            if ($order->delivery_status_id == 2) { 
+                $penaltyPercentage = 0.25;
+            } elseif ($order->delivery_status_id == 3) {
+                $penaltyPercentage = 0.50;
+            }
+
+            $penaltyAmount = $order->total * $penaltyPercentage;
+            $refundAmount = $order->total - $penaltyAmount;
+
+            // Cambiar estado a Cancelado (ID 6)
+            // Asumimos que ID 6 es Cancelado, buscarlo por si acaso
+            $canceladoStatus = DeliveryStatus::where('name', 'cancelado')->first();
+            if (!$canceladoStatus) {
+                throw new \Exception('Estado "cancelado" no encontrado');
+            }
+
+            $order->changeStatus(
+                $canceladoStatus->id, 
+                $request->user()->id, 
+                "Cancelado por usuario. Penalización: " . ($penaltyPercentage * 100) . "% ($" . number_format($penaltyAmount, 2) . ")"
+            );
+
+            // ✅ Reembolsar puntos si se usaron en esta orden
+            try {
+                $this->pointsService->refundPointsForOrder($order);
+            } catch (\Exception $e) {
+                Log::error('Error al reembolsar puntos en cancelación de orden #' . $order->id . ': ' . $e->getMessage());
+                // No lanzamos la excepción para no afectar la respuesta de cancelación exitosa
+            }
+
+            // ✅ RESTAURAR STOCK
+            $this->restoreStock($order);
+
+            // NOTA: Aquí iría la lógica real de reembolso con PayPal
+            // Como es simulado, solo registramos el log
+            Log::info('🚫 Orden cancelada por usuario', [
+                'order_id' => $order->id,
+                'status_before' => $statusName,
+                'penalty_percent' => $penaltyPercentage,
+                'penalty_amount' => $penaltyAmount,
+                'refund_amount' => $refundAmount
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Orden cancelada exitosamente',
+                'data' => [
+                    'penalty_amount' => $penaltyAmount,
+                    'refund_amount' => $refundAmount,
+                    'message' => "Se aplicó una tarifa del " . ($penaltyPercentage * 100) . "% ($" . number_format($penaltyAmount, 2) . "). Reembolso estimado: $" . number_format($refundAmount, 2)
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error al cancelar orden: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cancelar la orden',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Restaurar stock de los productos de una orden cancelada
+     */
+    private function restoreStock(Order $order)
+    {
+        try {
+            foreach ($order->orderItems as $item) {
+                if ($item->baseProduct) {
+                    $item->baseProduct->increment('stock', $item->quantity);
+                    
+                    Log::info('📦 Stock restaurado', [
+                        'order_id' => $order->id,
+                        'product_id' => $item->base_product_id,
+                        'product_name' => $item->baseProduct->name,
+                        'quantity_restored' => $item->quantity,
+                        'new_stock' => $item->baseProduct->fresh()->stock
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Error al restaurar stock para orden #' . $order->id . ': ' . $e->getMessage());
         }
     }
 }
