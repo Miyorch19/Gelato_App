@@ -27,6 +27,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:deploy": "react-scripts build && powershell -ExecutionPolicy Bypass -File ../Integradora/deploy-react.ps1",
     "test": "react-scripts test",
     "change-ip": "node change-ip.js",
     "eject": "react-scripts eject"
