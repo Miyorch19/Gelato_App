@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return response()->json(['message' => 'API funcionando']);
-});
+// Servir la aplicación React para todas las rutas no-API
+Route::get('/{any}', function () {
+    return view('react');
+})->where('any', '^(?!api).*$');
