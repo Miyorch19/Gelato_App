@@ -49,13 +49,13 @@ const ChatModal = ({ order, onClose }) => {
         try {
             echoRef.current = new Echo({
                 broadcaster: 'reverb',
-                key: process.env.REACT_APP_REVERB_APP_KEY || 'your-app-key',
-                wsHost: process.env.REACT_APP_REVERB_HOST || 'localhost',
-                wsPort: process.env.REACT_APP_REVERB_PORT || 8080,
-                wssPort: process.env.REACT_APP_REVERB_PORT || 8080,
-                forceTLS: (process.env.REACT_APP_REVERB_SCHEME || 'http') === 'https',
+                key: 'bgzcymqswrd5dunafh0b',
+                wsHost: 'gelatoapp-production.up.railway.app',
+                wsPort: 443,
+                wssPort: 443,
+                forceTLS: true,
                 enabledTransports: ['ws', 'wss'],
-                authEndpoint: `${process.env.REACT_APP_API_URL}/broadcasting/auth`,
+                authEndpoint: 'https://gelatoapp-production.up.railway.app/api/broadcasting/auth',
                 auth: {
                     headers: {
                         Authorization: `Bearer ${token}`,

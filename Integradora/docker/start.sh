@@ -6,6 +6,7 @@ set -e
 # Run standard Laravel commands
 echo "🚀 Running deployment tasks..."
 php artisan storage:link
+php artisan optimize:clear
 php artisan migrate --force
 
 # Replace PORT in nginx.conf
