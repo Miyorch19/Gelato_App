@@ -76,11 +76,20 @@ class AppServiceProvider extends ServiceProvider
 
                 public function url($path)
                 {
+                    // \Illuminate\Support\Facades\Log::info('📸 Firebase URL request:', ['path' => $path]);
+
                     // Generar URL firmada válida por 2 horas para evitar problemas de permisos públicos
                     // Nota: No verificamos existe() para rendimiento.
                     try {
-                        return $this->bucket->object($path)->signedUrl(new \DateTime('+2 hours'));
+                        $url = $this->bucket->object($path)->signedUrl(new \DateTime('+2 hours'));
+                        // \Illuminate\Support\Facades\Log::info('✅ Signed URL generated:', ['url' => $url]);
+                        return $url;
                     } catch (\Exception $e) {
+                         \Illuminate\Support\Facades\Log::error('🔥 Signed URL generation failed:', [
+                            'path' => $path,
+                            'error' => $e->getMessage()
+                        ]);
+                        
                         // Fallback en caso de error de firma
                         return 'https://storage.googleapis.com/' . $this->config['bucket'] . '/' . $path;
                     }
