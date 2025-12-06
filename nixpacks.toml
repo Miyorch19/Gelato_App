@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nginx"]
+nixPkgs = ["php", "phpPackages.composer", "nodejs", "npm", "nginx", "libmysqlclient"]
 aptPkgs = ["supervisor"]
 
 [phases.build]
