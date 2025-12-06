@@ -7,6 +7,7 @@ import { useProducts } from '../../hooks/useProducts';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
 import { useModal } from '../../context/ModalContext'; // ✅ Import Context
+import { API_BASE_URL } from '../../utils/constants';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ const Home = () => {
         const imagePath = product.image_url || product.image;
         if (imagePath?.startsWith('http')) return imagePath;
 
-        const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:8000';
+        const baseUrl = API_BASE_URL.replace('/api', '');
         const cleanPath = imagePath?.startsWith('/') ? imagePath : `/${imagePath}`;
         return `${baseUrl}/storage${cleanPath}`;
       };

@@ -7,10 +7,19 @@ import { Feather } from '@expo/vector-icons';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js/react-native';
 import ChatModal from '../../components/ChatModal';
-// import * as Notifications from 'expo-notifications';
+import * as Notifications from 'expo-notifications';
 
 // Configure Pusher for React Native
 window.Pusher = Pusher;
+
+// Configure Notification Handler
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+    }),
+});
 
 const DashboardScreen = () => {
     const { user, token, logout } = useContext(AuthContext);
@@ -42,7 +51,6 @@ const DashboardScreen = () => {
             });
 
             // Handle paginated response from Laravel
-            // API returns: { success: true, data: { current_page: 1, data: [...], ... } }
             const ordersData = response.data;
             const orders = ordersData?.data || [];
 
@@ -81,7 +89,6 @@ const DashboardScreen = () => {
             );
 
         } catch (error) {
-            // Ignore 401 errors as they are handled by the interceptor
             if (error.response?.status !== 401) {
                 console.error('Error fetching dashboard data:', error);
                 Alert.alert('Error', 'No se pudieron cargar los datos');
@@ -106,7 +113,7 @@ const DashboardScreen = () => {
     };
 
     useEffect(() => {
-        // registerForPushNotificationsAsync();
+        registerForPushNotificationsAsync();
         fetchDashboardData();
         fetchStatuses();
         setupEcho();
@@ -119,41 +126,37 @@ const DashboardScreen = () => {
         };
     }, [fetchDashboardData, user]);
 
-    // async function registerForPushNotificationsAsync() {
-    //     try {
-    //         const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    //         let finalStatus = existingStatus;
-    //         if (existingStatus !== 'granted') {
-    //             const { status } = await Notifications.requestPermissionsAsync();
-    //             finalStatus = status;
-    //         }
-    //         if (finalStatus !== 'granted') {
-    //             // alert('Failed to get push token for push notification!');
-    //             console.log('Failed to get push token for push notification!');
-    //             return;
-    //         }
-    //     } catch (error) {
-    //         console.log('Error registering for push notifications (likely Expo Go limitation):', error);
-    //     }
-    // }
+    async function registerForPushNotificationsAsync() {
+        try {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+                const { status } = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+            if (finalStatus !== 'granted') {
+                console.log('Failed to get push token for push notification!');
+                return;
+            }
+        } catch (error) {
+            console.log('Error registering for push notifications (likely Expo Go limitation):', error);
+        }
+    }
 
     const setupEcho = () => {
         if (!user || !token) return;
 
         try {
-            // Extract host from API_URL
-            const match = API_URL.match(/https?:\/\/([^:]+)/);
-            const host = match ? match[1] : '192.168.1.67';
-
             echoRef.current = new Echo({
                 broadcaster: 'reverb',
                 key: 'bgzcymqswrd5dunafh0b',
-                wsHost: host,
-                wsPort: 8080,
-                wssPort: 8080,
-                forceTLS: false,
+                wsHost: 'gelatoapp-production.up.railway.app',
+                wsPort: 443,
+                wssPort: 443,
+                forceTLS: true,
+                disableStats: true,
                 enabledTransports: ['ws', 'wss'],
-                authEndpoint: `${API_URL}/broadcasting/auth`,
+                authEndpoint: 'https://gelatoapp-production.up.railway.app/broadcasting/auth',
                 auth: {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -167,15 +170,14 @@ const DashboardScreen = () => {
                 .listen('OrderAssigned', async (e) => {
                     console.log('New order assigned:', e.order);
 
-                    // Schedule local notification
-                    // await Notifications.scheduleNotificationAsync({
-                    //     content: {
-                    //         title: "¡Nuevo Pedido Asignado!",
-                    //         body: `Se te ha asignado el pedido #${e.order.id}`,
-                    //         data: { orderId: e.order.id },
-                    //     },
-                    //     trigger: null, // Show immediately
-                    // });
+                    await Notifications.scheduleNotificationAsync({
+                        content: {
+                            title: "¡Nuevo Pedido Asignado!",
+                            body: `Se te ha asignado el pedido #${e.order.id}`,
+                            data: { orderId: e.order.id },
+                        },
+                        trigger: null,
+                    });
 
                     Alert.alert(
                         '¡Nuevo Pedido Asignado!',
@@ -509,6 +511,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        // paddingHorizontal: 20, // Align with content
     },
     sectionTitle: {
         fontSize: 20,

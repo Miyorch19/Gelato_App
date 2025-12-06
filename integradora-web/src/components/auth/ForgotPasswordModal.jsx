@@ -83,7 +83,7 @@ const ForgotPasswordModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                     <div className="flex items-baseline justify-center">
                         <h1 className="text-7xl xl:text-8xl font-black text-black tracking-tighter">Gelato</h1>
                         <img
-                            src="/choco-2.png"
+                            src={`${process.env.PUBLIC_URL}/choco-2.png`}
                             alt="."
                             className="w-10 h-10 xl:w-12 xl:h-12 ml-1 object-contain translate-y-2"
                         />

@@ -42,5 +42,6 @@ class AppServiceProvider extends ServiceProvider
             
             return ($sum % 10) == 0;
         });
+
     }
 }

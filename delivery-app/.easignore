@@ -1,0 +1,5 @@
+# Ignore sibling directories to prevent symlink errors
+../Integradora
+../integradora-web
+../delivery-app-source
+!/

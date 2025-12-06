@@ -14,7 +14,7 @@ export const getProfilePhotoUrl = (photoUrl) => {
     // For now, let's use the same IP address logic.
 
     // IMPORTANT: This must match the IP in services/api.js
-    const API_BASE_URL = 'http://192.168.1.67:8000';
+    const API_BASE_URL = 'https://gelatoapp-production.up.railway.app';
 
     // Ensure path starts with /
     const cleanPath = photoUrl.startsWith('/') ? photoUrl : `/${photoUrl}`;

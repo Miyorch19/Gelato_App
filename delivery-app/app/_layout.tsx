@@ -3,25 +3,25 @@ import { Slot, useSegments, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { View, ActivityIndicator, LogBox } from 'react-native';
-// import * as Notifications from 'expo-notifications';
+import * as Notifications from 'expo-notifications';
 
 LogBox.ignoreLogs([
   'expo-notifications: Android Push notifications',
   'Expo Go',
 ]);
 
-// try {
-//   Notifications.setNotificationHandler({
-//     handleNotification: async () => ({
-//       shouldShowBanner: true,
-//       shouldShowList: true,
-//       shouldPlaySound: true,
-//       shouldSetBadge: false,
-//     }),
-//   });
-// } catch (error) {
-//   console.log('Error setting notification handler (likely Expo Go limitation):', error);
-// }
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (error) {
+  console.log('Error setting notification handler (likely Expo Go limitation):', error);
+}
 
 const RootLayoutNav = () => {
   const { user, isLoading, isInitialized } = useAuth();

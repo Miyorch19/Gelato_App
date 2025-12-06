@@ -5,7 +5,7 @@ import Modal from '../../components/common/Modal';
 import Loader from '../../components/common/Loader';
 import Alert from '../../components/common/Alert';
 import MultipleImageUploader from '../../components/common/MultipleImageUploader';
-import axios from 'axios';
+import api from '../../api/axiosConfig';
 
 const AdminProducts = () => {
   const { products, loading, error, fetchProducts, createProduct, updateProduct, deleteProduct } = useProducts();
@@ -38,8 +38,6 @@ const AdminProducts = () => {
   const [flavors, setFlavors] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
-  const API_BASE_URL = 'http://localhost:8000/api';
-
   useEffect(() => {
     fetchProducts();
     fetchOptions();
@@ -48,14 +46,10 @@ const AdminProducts = () => {
   const fetchOptions = async () => {
     try {
       setLoadingOptions(true);
-      const token = localStorage.getItem('token');
-      const config = token ? {
-        headers: { Authorization: `Bearer ${token}` }
-      } : {};
 
       const [categoriesRes, flavorsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/categories`, config),
-        axios.get(`${API_BASE_URL}/catalog/flavors`),
+        api.get('/categories'),
+        api.get('/catalog/flavors'),
       ]);
 
       setCategories(categoriesRes.data.data || categoriesRes.data || []);

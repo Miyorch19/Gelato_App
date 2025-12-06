@@ -51,19 +51,16 @@ const ChatModal = ({ order, visible, onClose }) => {
         if (!order) return;
 
         try {
-            // Extract host from API_URL (e.g., http://192.168.1.67:8000/api -> 192.168.1.67)
-            const match = API_URL.match(/https?:\/\/([^:]+)/);
-            const host = match ? match[1] : '192.168.1.67';
-
             echoRef.current = new Echo({
                 broadcaster: 'reverb',
                 key: 'bgzcymqswrd5dunafh0b',
-                wsHost: host,
-                wsPort: 8080,
-                wssPort: 8080,
-                forceTLS: false,
+                wsHost: 'gelatoapp-production.up.railway.app',
+                wsPort: 443,
+                wssPort: 443,
+                forceTLS: true,
+                disableStats: true,
                 enabledTransports: ['ws', 'wss'],
-                authEndpoint: `${API_URL}/broadcasting/auth`,
+                authEndpoint: 'https://gelatoapp-production.up.railway.app/broadcasting/auth',
                 auth: {
                     headers: {
                         Authorization: `Bearer ${token}`,

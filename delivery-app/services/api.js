@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
 // URL for physical device (Local Network IP)
-const API_URL = 'http://192.168.1.75:8000/api';
+const API_URL = 'https://gelatoapp-production.up.railway.app/api';
 
 const api = axios.create({
     baseURL: API_URL,

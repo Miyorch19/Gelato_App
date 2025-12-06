@@ -107,8 +107,10 @@ class BaseProductController extends Controller
                 ] : null
             ], 200);
         } catch (\Exception $e) {
-            Log::error('Error en BaseProductController@index:', [
+            Log::error('🔥 Error CRÍTICO en BaseProductController@index:', [
                 'message' => $e->getMessage(),
+                'file' => $e->getFile(), // Agregamos archivo
+                'line' => $e->getLine(), // Agregamos línea
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -299,7 +301,7 @@ class BaseProductController extends Controller
                 }
                 
                 foreach ($images as $index => $image) {
-                    $imagePath = $image->store('products', 'public');
+                    $imagePath = $image->store('products');
                     
                     BaseProductImage::create([
                         'base_product_id' => $product->id,

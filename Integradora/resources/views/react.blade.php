@@ -21,14 +21,14 @@
         }
     @endphp
     @if($mainCss)
-    <link href="/react-app{{ $mainCss }}" rel="stylesheet">
+    <link href="{{ $mainCss }}" rel="stylesheet">
     @endif
 </head>
 <body>
     <noscript>Necesitas habilitar JavaScript para ejecutar esta aplicación.</noscript>
     <div id="root"></div>
     @if($mainJs)
-    <script src="/react-app{{ $mainJs }}"></script>
+    <script src="{{ $mainJs }}"></script>
     @endif
 </body>
 </html>

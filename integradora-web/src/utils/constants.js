@@ -1,4 +1,6 @@
-export const API_BASE_URL = 'http://localhost:8000/api';
+export const API_BASE_URL = window.location.hostname.includes('railway.app')
+  ? 'https://gelatoapp-production.up.railway.app/api'
+  : (process.env.REACT_APP_API_URL || 'http://localhost:8000/api');
 
 export const USER_ROLES = {
   SUPERADMIN: 'superadmin',  // ✅ Agregado

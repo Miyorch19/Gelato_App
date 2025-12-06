@@ -1,4 +1,5 @@
 import React from 'react';
+import { API_BASE_URL } from '../../utils/constants';
 
 const ProductCard = ({
   product,
@@ -22,7 +23,7 @@ const ProductCard = ({
       return imagePath;
     }
 
-    const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:8000';
+    const baseUrl = API_BASE_URL.replace('/api', '');
     const cleanPath = imagePath?.startsWith('/') ? imagePath : `/${imagePath}`;
 
     return `${baseUrl}/storage${cleanPath}`;

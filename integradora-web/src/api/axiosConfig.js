@@ -2,7 +2,10 @@ import axios from 'axios';
 import { toastManager } from '../utils/toastManager';
 
 // Leer URL desde variables de entorno
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+// Leer URL dinámicamente según el entorno
+const BASE_URL = window.location.hostname.includes('railway.app')
+  ? 'https://gelatoapp-production.up.railway.app/api'
+  : (process.env.REACT_APP_API_URL || 'http://localhost:8000/api');
 
 // Mostrar en consola para verificar
 console.log('API conectada a:', BASE_URL);
