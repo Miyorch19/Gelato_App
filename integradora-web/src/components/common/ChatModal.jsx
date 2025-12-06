@@ -87,34 +87,33 @@ const ChatModal = ({ order, onClose }) => {
         e.preventDefault();
         if (!newMessage.trim() || sending) return;
 
+        console.log('Sending message:', newMessage);
         setSending(true);
 
-        // Optimistic update: Show message immediately
+        // Optimistic update
         const tempId = Date.now();
         const tempMessage = {
             id: tempId,
             content: newMessage.trim(),
             sender_id: user.id,
             created_at: new Date().toISOString(),
-            sender: user // Assuming user object has name/photo
+            sender: user
         };
 
         setMessages((prev) => [...prev, tempMessage]);
         setNewMessage('');
 
-        // Allow render cycle to run before scroll
         setTimeout(scrollToBottom, 50);
 
         try {
             const sentMessage = await messageService.sendMessage(order.id, tempMessage.content);
+            console.log('Message sent confirmed:', sentMessage);
 
-            // Replace temp message with real one
             setMessages((prev) => prev.map(m => m.id === tempId ? sentMessage : m));
+            await loadMessages();
         } catch (error) {
             console.error('Error sending message:', error);
             setErrorMessage('Error al enviar el mensaje');
-
-            // Remove temp message if failed
             setMessages((prev) => prev.filter(m => m.id !== tempId));
         } finally {
             setSending(false);
