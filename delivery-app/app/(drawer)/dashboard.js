@@ -156,7 +156,7 @@ const DashboardScreen = () => {
                 forceTLS: true,
                 disableStats: true,
                 enabledTransports: ['ws', 'wss'],
-                authEndpoint: 'https://gelatoapp-production.up.railway.app/broadcasting/auth',
+                authEndpoint: 'https://gelatoapp-production.up.railway.app/api/broadcasting/auth',
                 auth: {
                     headers: {
                         Authorization: `Bearer ${token}`,

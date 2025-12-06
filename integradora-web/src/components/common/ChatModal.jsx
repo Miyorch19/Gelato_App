@@ -65,7 +65,7 @@ const ChatModal = ({ order, onClose }) => {
 
             echoRef.current
                 .private(`order.${order.id}`)
-                .listen('MessageSent', (e) => {
+                .listen('.message.sent', (e) => {
                     console.log('New message received:', e.message);
                     setMessages((prev) => {
                         if (prev.some(m => m.id === e.message.id)) return prev;

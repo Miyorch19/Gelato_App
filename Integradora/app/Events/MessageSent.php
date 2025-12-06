@@ -33,4 +33,11 @@ class MessageSent implements ShouldBroadcast
             new PrivateChannel('order.' . $this->message->order_id),
         ];
     }
+    /**
+     * The event's broadcast name.
+     */
+    public function broadcastAs(): string
+    {
+        return 'message.sent';
+    }
 }

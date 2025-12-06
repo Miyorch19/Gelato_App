@@ -66,7 +66,7 @@ const ChatModal = ({ order, visible, onClose }) => {
                 forceTLS: true,
                 disableStats: true,
                 enabledTransports: ['ws', 'wss'],
-                authEndpoint: 'https://gelatoapp-production.up.railway.app/broadcasting/auth',
+                authEndpoint: 'https://gelatoapp-production.up.railway.app/api/broadcasting/auth',
                 auth: {
                     headers: {
                         Authorization: `Bearer ${token}`,
@@ -77,7 +77,7 @@ const ChatModal = ({ order, visible, onClose }) => {
 
             echoRef.current
                 .private(`order.${order.id}`)
-                .listen('MessageSent', (e) => {
+                .listen('.message.sent', (e) => {
                     console.log('New message received:', e.message);
                     setMessages((prev) => {
                         if (prev.some(m => m.id === e.message.id)) return prev;
