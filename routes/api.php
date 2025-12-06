@@ -322,3 +322,38 @@ Route::middleware('auth:sanctum')->group(function () {
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
+
+// DEBUG UPLOAD ROUTE - REMOVE AFTER FIXING
+Route::get('/debug-upload', function () {
+    try {
+        $diskName = config('filesystems.default');
+        $disk = \Illuminate\Support\Facades\Storage::disk($diskName);
+        $filename = 'debug-' . time() . '.txt';
+        
+        // 1. Intentar escribir
+        $disk->put($filename, 'Hello form Railway ' . date('Y-m-d H:i:s'));
+        
+        // 2. Verificar existencia
+        $exists = $disk->exists($filename);
+        
+        // 3. Generar URL
+        $url = $disk->url($filename);
+        
+        return response()->json([
+            'success' => true,
+            'disk' => $diskName,
+            'filename' => $filename,
+            'exists_after_put' => $exists,
+            'url' => $url,
+            'config' => [
+                'bucket' => config("filesystems.disks.{$diskName}.bucket")
+            ]
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
